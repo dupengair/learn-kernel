@@ -1,0 +1,9 @@
+# 两个内核源码仅本地学习用，不入库
+/linux-6.6.159/
+/UniProton/
+
+# 编辑器与系统文件
+.vscode/
+.idea/
+*.swp
+.DS_Store
