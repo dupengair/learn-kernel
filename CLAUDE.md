@@ -33,7 +33,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Linux 调度：`linux-6.6.159/kernel/sched/`（`fair.c` EEVDF、`rt.c`、`core.c` 调度类框架）
 - Linux 核间通信：`linux-6.6.159/arch/*/kernel/smp.c`（IPI）、`drivers/rpmsg/`、`drivers/virtio/`
 - UniProton 调度：`UniProton/src/core/kernel/`（任务、软中断、TICK）及 `doc/design/task.md`
-- UniProton 核间通信：`UniProton/src/extended/`（rpmsglite 适配）、`UniProton/doc/design/`（中文设计文档）
+- UniProton 核间通信：`UniProton/src/component/rpmsg-lite/`（RPMsg-Lite 库）、`UniProton/src/component/mica/`（MICA 混合部署，基于 OpenAMP/virtio + IPI）、`UniProton/doc/design/`（中文设计文档）
 - UniProton demo/板级指南：`UniProton/doc/demo_guide/`；Linux 文档：`linux-6.6.159/Documentation/`
 
 ## UniProton 构建命令
