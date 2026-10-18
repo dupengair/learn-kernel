@@ -30,11 +30,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 重点阅读入口：
 
+- **代码级教案系列（docs/02~09）**：已完成"实时性七大技术点"的行号级对比分析——02 内核形态与启动 / 03 调度决策 / 04 抢占与临界区 / 05 中断路径 / 06 内存确定性 / 07 API路径与上下文切换 / 08 优先级继承 / 09 MICA核间通信。回答相关问题时优先参考并保持一致口径
 - Linux 调度：`linux-6.6.159/kernel/sched/`（`fair.c` EEVDF、`rt.c`、`core.c` 调度类框架）
 - Linux 核间通信：`linux-6.6.159/arch/*/kernel/smp.c`（IPI）、`drivers/rpmsg/`、`drivers/virtio/`
-- UniProton 调度：`UniProton/src/core/kernel/`（任务、软中断、TICK）及 `doc/design/task.md`
+- UniProton 调度：`UniProton/src/core/kernel/`（任务、TICK；注意本 checkout 无软中断模块）及 `doc/design/task.md`
 - UniProton 核间通信：`UniProton/src/component/rpmsg-lite/`（RPMsg-Lite 库）、`UniProton/src/component/mica/`（MICA 混合部署，基于 OpenAMP/virtio + IPI）、`UniProton/doc/design/`（中文设计文档）
 - UniProton demo/板级指南：`UniProton/doc/demo_guide/`；Linux 文档：`linux-6.6.159/Documentation/`
+
+版本陷阱提醒（写文档/回答时注意）：6.6 fair.c 是 EEVDF（非旧 CFS）；6.6 的 mm_init 已改名 mm_core_init、folio API 替换旧页函数；check_preempt_curr 已改名 wakeup_preempt；PREEMPT_RT 完整合入在 6.12；UniProton 本 checkout 无 SWI 模块、demos/riscv64virt 链接脚本实际是 rv64virt.ld（无 examples.ld）。
 
 ## UniProton 构建命令
 
