@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目定位
 
-这是一个**内核对比学习工作区**，目标是对比学习通用 Linux 内核（社区 6.6）与 UniProton RTOS 在以下两个方向的实现差异：
+这是一个**内核对比学习工作区**，目标是对比学习通用 Linux 内核（openEuler OLK-6.6 分支，基线 6.6 + openEuler 补丁）与 UniProton RTOS 在以下两个方向的实现差异：
 
 1. **调度机制** — Linux 的 CFS/EEVDF、RT 调度类 vs UniProton 的优先级抢占式任务调度
 2. **核间通信** — Linux 的 IPI/SMP/rpmsg 机制 vs UniProton 的 rpmsglite 及混合部署（MICA/mcs）方案
@@ -13,17 +13,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 工作约束
 
-- **代码分析优先使用 codegraph**。两个代码库各自建立了索引，由于本会话没有默认项目，调用 `codegraph_explore` 时必须通过 `projectPath` 参数指定目标代码库（`.../learn-kernel/linux-6.6.159` 或 `.../learn-kernel/UniProton`）。没有索引的目录用常规工具。
+- **代码分析优先使用 codegraph**。两个代码库各自建立了索引，由于本会话没有默认项目，调用 `codegraph_explore` 时必须通过 `projectPath` 参数指定目标代码库（`.../learn-kernel/openEuler-6.6` 或 `.../learn-kernel/UniProton`）。没有索引的目录用常规工具。
 - **所有问答讨论和文档记录一律使用中文**。
 - **答疑文档**写入 `docs/`，命名格式：`NN-问题关键字.md`（NN 为两位序号，从 00 递增），如 `00-RTOS与linux内核的差异.md`。每次有价值的答疑讨论应整理归档到 docs/，而不是只留在对话里。
-- `linux-6.6.159/` 和 `UniProton/` 是上游源码，**只读不改**（学习过程不做任何修改），且不纳入 git 提交。
+- `openEuler-6.6/` 和 `UniProton/` 是上游源码，**只读不改**（学习过程不做任何修改），且不纳入 git 提交。
 - 远程仓库：https://github.com/dupengair/learn-kernel.git
 
 ## 工作区结构
 
 根目录不是 git 仓库（git 仓库即本项目本身，学习笔记入库，两个内核源码仅本地存在）：
 
-- `linux-6.6.159/` — Linux 内核 6.6.159（LTS）完整源码树，非 git 仓库，仅本地学习用
+- `openEuler-6.6/` — Linux 内核 openEuler OLK-6.6 分支源码（基线 6.6 + openEuler 补丁集，与社区 6.6.y 存在行号偏移和局部代码差异），本身是 git 仓库，仅本地学习用
 - `UniProton/` — openEuler UniProton RTOS 源码（上游在 AtomGit），仅本地学习用
 - `docs/` — 学习答疑文档（入库内容）
 - `CLAUDE.md`、`README.md`、`.gitignore` — 项目文件（入库内容）
@@ -31,13 +31,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 重点阅读入口：
 
 - **代码级教案系列（docs/02~09）**：已完成"实时性七大技术点"的行号级对比分析——02 内核形态与启动 / 03 调度决策 / 04 抢占与临界区 / 05 中断路径 / 06 内存确定性 / 07 API路径与上下文切换 / 08 优先级继承 / 09 MICA核间通信。回答相关问题时优先参考并保持一致口径
-- Linux 调度：`linux-6.6.159/kernel/sched/`（`fair.c` EEVDF、`rt.c`、`core.c` 调度类框架）
-- Linux 核间通信：`linux-6.6.159/arch/*/kernel/smp.c`（IPI）、`drivers/rpmsg/`、`drivers/virtio/`
+- Linux 调度：`openEuler-6.6/kernel/sched/`（`fair.c` EEVDF、`rt.c`、`core.c` 调度类框架）
+- Linux 核间通信：`openEuler-6.6/arch/*/kernel/smp.c`（IPI）、`drivers/rpmsg/`、`drivers/virtio/`
 - UniProton 调度：`UniProton/src/core/kernel/`（任务、TICK；注意本 checkout 无软中断模块）及 `doc/design/task.md`
 - UniProton 核间通信：`UniProton/src/component/rpmsg-lite/`（RPMsg-Lite 库）、`UniProton/src/component/mica/`（MICA 混合部署，基于 OpenAMP/virtio + IPI）、`UniProton/doc/design/`（中文设计文档）
-- UniProton demo/板级指南：`UniProton/doc/demo_guide/`；Linux 文档：`linux-6.6.159/Documentation/`
+- UniProton demo/板级指南：`UniProton/doc/demo_guide/`；Linux 文档：`openEuler-6.6/Documentation/`
 
-版本陷阱提醒（写文档/回答时注意）：6.6 fair.c 是 EEVDF（非旧 CFS）；6.6 的 mm_init 已改名 mm_core_init、folio API 替换旧页函数；check_preempt_curr 已改名 wakeup_preempt；PREEMPT_RT 完整合入在 6.12；UniProton 本 checkout 无 SWI 模块、demos/riscv64virt 链接脚本实际是 rv64virt.ld（无 examples.ld）。
+版本陷阱提醒（写文档/回答时注意）：本工作区 Linux 侧为 openEuler OLK-6.6（非社区原生 6.6.y），与社区同版本存在 openEuler 补丁带来的行号偏移和局部代码差异，行号引用一律以本地 openEuler-6.6 实测为准（可用 `git -C openEuler-6.6 log` 追溯补丁来源）。基线 6.6 的通用陷阱仍成立：fair.c 是 EEVDF（非旧 CFS）；mm_init 已改名 mm_core_init、folio API 替换旧页函数；check_preempt_curr 已改名 wakeup_preempt；PREEMPT_RT 完整合入在 6.12；UniProton 本 checkout 无 SWI 模块、demos/riscv64virt 链接脚本实际是 rv64virt.ld（无 examples.ld）。
 
 ## UniProton 构建命令
 
@@ -77,7 +77,7 @@ demo 通用结构：`apps/`（业务代码）、`bsp/`（板级驱动）、`buil
 ## Linux 内核常用命令
 
 ```bash
-cd linux-6.6.159
+cd openEuler-6.6
 make defconfig                 # 或 make menuconfig / nconfig
 make -j$(nproc)                # 完整构建
 make htmldocs                  # 生成文档（需 sphinx）

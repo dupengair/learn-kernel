@@ -68,7 +68,7 @@ struct TskContext {                 /* 就是任务栈顶的切换帧，256B；F
 
 **① 入口（汇编）** — arch/riscv/kernel/entry.S:21-110 `handle_exception`：`csrrw tp, CSR_SCRATCH, tp` 一次原子交换判来向（:27）；`addi sp, sp, -(PT_SIZE_ON_STACK)` 后 `REG_S` x1,x3,x5 + `save_from_x6_to_x31`（:42-49，**31 个 GPR 全存**）；再存 sstatus/sepc/stval/scause（:60-71）；按 scause 索引 `excp_vect_table`（:97-104，:295 的 8 号槽就是 `do_trap_ecall_u`）。
 
-**② 分发与安全框架（C 层）** — arch/riscv/kernel/traps.c:308-336：
+**② 分发与安全框架（C 层）** — arch/riscv/kernel/traps.c:331-359：
 
 ```c
 regs->epc += 4;  regs->orig_a0 = regs->a0;  regs->a0 = -ENOSYS;
@@ -80,9 +80,13 @@ if (syscall >= 0 && syscall < NR_syscalls) {
 syscall_exit_to_user_mode(regs);
 ```
 
-**③ 退出循环** — kernel/entry/common.c:156-221 `exit_to_user_mode_loop`：`_TIF_NEED_RESCHED → schedule()`；`_TIF_SIGPENDING → arch_do_signal_or_restart()`（syscall restart 就在这）；`_TIF_NOTIFY_RESUME → resume_user_mode_work()`。**全部清零才 sret**——这是每次系统调用的固定保险费。
+> ⚠ openEuler 差异勘误（两库 diff 复核）：`__trap_section` 标记并非 openEuler 特有——社区 6.6.159 的 do_trap_ecall_u 同样带此标记（traps.c:308-336）。真正的 openEuler 差异是新增 `CONFIG_LIVEPATCH_WO_FTRACE`（免 ftrace 的 livepatch 断点处理 `klp_breakpoint_handler`，traps.c:270-285），它使 do_trap_ecall_u 后移至 :331-359；分发逻辑本身两版一致。
 
-**④ 上下文切换** — kernel/sched/core.c:5325-5386 `context_switch`：`switch_mm_irqs_off`（:5366）→ `switch_to`（:5382）。地址空间切换在 arch/riscv/mm/context.c:193-206：`csr_write(CSR_SATP, pgd_pfn|asid|mode)`；**无 ASID 硬件时 `set_mm_noasid` 每次切换无条件 satp 写 + `sfence.vma` 全刷**（:201-206，local_flush_tlb_all 就是 sfence.vma，asm/tlbflush.h:20-23）。寄存器切换 `__switch_to`（entry.S:240-277）只存 **14 个**：ra/sp/s0-s11，恢复端 `move tp, a1` 重载 current。
+**③ 退出循环** — kernel/entry/common.c:93-137 `exit_to_user_mode_loop`：`_TIF_NEED_RESCHED → schedule()`；`_TIF_SIGPENDING → arch_do_signal_or_restart()`（syscall restart 就在这）；`_TIF_NOTIFY_RESUME → resume_user_mode_work()`。**全部清零才 sret**——这是每次系统调用的固定保险费。
+
+> ⚠ openEuler 差异：openEuler-6.6 回移了 mainline 6.12 的 entry 框架重构——enter_from_user_mode/syscall_enter_from_user_mode/exit_to_user_mode 等小函数移入 include/linux/entry-common.h 内联实现，kernel/entry/common.c 仅 407 行（社区 6.6 约 470 行），exit_to_user_mode_loop 位于 93-137；TIF 循环逻辑与社区 6.6 完全一致。
+
+**④ 上下文切换** — kernel/sched/core.c:5283-5343 `context_switch`：`switch_mm_irqs_off`（:5323）→ `switch_to`（:5339）。地址空间切换在 arch/riscv/mm/context.c:193-206：`csr_write(CSR_SATP, pgd_pfn|asid|mode)`；**无 ASID 硬件时 `set_mm_noasid` 每次切换无条件 satp 写 + `sfence.vma` 全刷**（:201-206，local_flush_tlb_all 就是 sfence.vma，asm/tlbflush.h:20-23）。寄存器切换 `__switch_to`（entry.S:240-277）只存 **14 个**：ra/sp/s0-s11，恢复端 `move tp, a1` 重载 current。
 
 ### 4.2 UniProton：一次 PRT_TaskDelay 的全程
 
@@ -126,10 +130,10 @@ syscall_exit_to_user_mode(regs);
 
 **推荐路线**：
 
-1. `linux-6.6.159/arch/riscv/kernel/entry.S:21-110`（入口与 scratch 技巧）→ `include/asm/ptrace.h:15-54`（pt_regs）
-2. `linux-6.6.159/arch/riscv/kernel/traps.c:308-336`（C 层分发）→ `kernel/entry/common.c:48-95,156-221,267-308`（进/出通用框架三段）
-3. `linux-6.6.159/kernel/sched/core.c:5325-5386`（context_switch 两层）→ `entry.S:240-277`（14 寄存器）→ `arch/riscv/mm/context.c:192-206,318-338`（satp/sfence.vma）
-4. `linux-6.6.159/kernel/futex/syscalls.c:192-210` + `waitwake.c:323-328`（用户态同步进内核的对照）
+1. `openEuler-6.6/arch/riscv/kernel/entry.S:21-110`（入口与 scratch 技巧）→ `include/asm/ptrace.h:15-54`（pt_regs）
+2. `openEuler-6.6/arch/riscv/kernel/traps.c:331-359`（C 层分发）→ `kernel/entry/common.c:28-83,93-137,183-224`（进/出通用框架三段）
+3. `openEuler-6.6/kernel/sched/core.c:5283-5343`（context_switch 两层）→ `entry.S:240-277`（14 寄存器）→ `arch/riscv/mm/context.c:192-206,318-338`（satp/sfence.vma）
+4. `openEuler-6.6/kernel/futex/syscalls.c:192-212` + `waitwake.c:323-328`（用户态同步进内核的对照）
 5. `UniProton/src/include/uapi/hw/riscv64/os_cpu_riscv64.h:30-79`（TskContext 帧布局）
 6. `UniProton/src/arch/cpu/riscv64/common/common/prt_port.c:74-131`（伪造初始栈帧）
 7. `UniProton/src/arch/cpu/riscv64/common/common/prt_hw.s:12-104`（OsTskContextLoad）→ `:109-232`（trap）→ `:329-460`（OsTaskTrap，重点 :330-363 手工改 mstatus）
@@ -146,4 +150,4 @@ syscall_exit_to_user_mode(regs);
 
 ---
 
-*本篇行号基于 linux-6.6.159 与 UniProton 当前 checkout 实测；6.6 中 RISC-V 的 __switch_to 已并入 entry.S（无独立 switch_to.S），syscall 分发也已从汇编移入 C 层 traps.c。未确认项：arch_do_signal_or_restart 的 restart 细节、SMP 版 OsMainSchedule（riscv64virt 未启用）。*
+*本篇行号基于 openEuler-6.6 与 UniProton 当前 checkout 实测；6.6 中 RISC-V 的 __switch_to 已并入 entry.S（无独立 switch_to.S），syscall 分发也已从汇编移入 C 层 traps.c。（勘误：should_fail_futex() 故障注入并非 openEuler 特有，社区 6.6.159 的 syscalls.c:201 同样存在，两侧 SYSCALL_DEFINE6(futex) 逐行一致。）未确认项：arch_do_signal_or_restart 的 restart 细节、SMP 版 OsMainSchedule（riscv64virt 未启用）。*

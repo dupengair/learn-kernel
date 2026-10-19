@@ -1,6 +1,6 @@
 # learn-kernel — Linux 内核与 UniProton RTOS 对比学习
 
-以社区 Linux kernel 6.6 与 openEuler [UniProton](https://atomgit.com/openeuler/UniProton) 两个内核代码为基础，对比学习**通用操作系统**与**实时操作系统（RTOS）**在调度机制和核间通信上的实现差异，深入理解 RTOS 实时性优势背后的技术手段与内核实现机制。
+以 openEuler Linux kernel 6.6（[OLK-6.6 分支](https://gitee.com/openeuler/kernel/tree/OLK-6.6)，基线 6.6 + openEuler 补丁）与 openEuler [UniProton](https://atomgit.com/openeuler/UniProton) 两个内核代码为基础，对比学习**通用操作系统**与**实时操作系统（RTOS）**在调度机制和核间通信上的实现差异，深入理解 RTOS 实时性优势背后的技术手段与内核实现机制。
 
 ## 学习目标
 
@@ -27,13 +27,13 @@ learn-kernel/
 └── README.md
 ```
 
-> 两个内核源码（`linux-6.6.159/`、`UniProton/`）仅保留在本地，通过 `.gitignore` 排除，不入库。
+> 两个内核源码（`openEuler-6.6/`、`UniProton/`）仅保留在本地，通过 `.gitignore` 排除，不入库。
 
 ## 本地源码版本
 
 | 代码库 | 版本 | 获取方式 |
 | ------ | ---- | -------- |
-| Linux | 6.6.159（LTS） | https://cdn.kernel.org/pub/linux/kernel/v6.x/ |
+| Linux | openEuler OLK-6.6 分支（基线 6.6） | https://gitee.com/openeuler/kernel/tree/OLK-6.6 |
 | UniProton | openEuler / AtomGit 主线 | https://atomgit.com/openeuler/UniProton |
 
 ## 环境说明

@@ -68,7 +68,7 @@ virtqueue_add_outbuf(vrp->svq, &sg, 1, ...);// :632 挂avail环
 virtqueue_kick(vrp->svq);                   // :644 打铃
 ```
 
-**打铃的最后一米**（经三层转发）— `virtqueue_kick`（virtio_ring.c:2390，先查 used->flags 的 NO_NOTIFY 抑制位 :2345）→ `vq->notify` = `rproc_virtio_notify`（remoteproc_virtio.c:65-75 `rproc->ops->kick(rproc, notifyid)`）→ 以 i.MX 为例 `imx_mu_generic_tx`（drivers/mailbox/imx-mailbox.c:215-236）：`imx_mu_xcr_rmw(priv, IMX_MU_GCR, GIEn, 0)` **写 MU 寄存器触发对端核 IRQ**。
+**打铃的最后一米**（经三层转发）— `virtqueue_kick`（virtio_ring.c:2408，先经 `virtqueue_kick_prepare` 查 used->flags 的 NO_NOTIFY 抑制位 :2363）→ `vq->notify` = `rproc_virtio_notify`（remoteproc_virtio.c:65-75 `rproc->ops->kick(rproc, notifyid)`）→ 以 i.MX 为例 `imx_mu_generic_tx`（drivers/mailbox/imx-mailbox.c:215-236）：`imx_mu_xcr_rmw(priv, IMX_MU_GCR, GIRn, 0)`（:227 置 GCR 的 GIRn 位）**写 MU 寄存器触发对端核 IRQ**。
 
 **接收** — vq 回调 `rpmsg_recv_done`（virtio_rpmsg_bus.c:777-806）：
 
@@ -80,7 +80,7 @@ if (msgs_received) virtqueue_kick(vrp->rvq);// 归还buffer通知对端可继续
 
 `rpmsg_recv_single`（:708-774）：按 `msg->dst` 在 idr 找 endpoint → 持 cb_lock 调 `ept->cb(...)`（:753，**零拷贝直指共享内存 payload**）→ buffer 重新挂回 avail。
 
-**master 的生命周期管理** — `rproc_fw_boot`（remoteproc_core.c:1371-1445）：`request_firmware` → 定位固件内 resource table（:1403）→ `rproc_handle_resources` 逐条分发；vdev 条目走 `rproc_handle_vdev`（:475-526）注册 rproc-virtio 平台设备 → `rp_find_vq` 分配 vring 内存、**把地址写回 `rsc->vring[id].da`**（remoteproc_virtio.c:160-161）→ `rproc_start` 搬 ELF 段进对端内存（:1268）、上电放行（:1296）。**名字服务 NS**：remote 建 endpoint 时向端口 53 广播，Linux `rpmsg_ns_cb`（rpmsg_ns.c:31-72）动态创建 rpmsg 设备（rpmsg_tty 等）。
+**master 的生命周期管理** — `rproc_fw_boot`（remoteproc_core.c:1382-1456）：`request_firmware` → 定位固件内 resource table（:1414 `rproc_parse_fw`）→ `rproc_handle_resources` 逐条分发；vdev 条目走 `rproc_handle_vdev`（:475-526）注册 rproc-virtio 平台设备 → `rp_find_vq` 分配 vring 内存、**把地址写回 `rsc->vring[id].da`**（remoteproc_virtio.c:160-161）→ `rproc_start` 搬 ELF 段进对端内存（:1279）、上电放行（:1307）。**名字服务 NS**：remote 建 endpoint 时向端口 53 广播，Linux `rpmsg_ns_cb`（rpmsg_ns.c:31-72）动态创建 rpmsg 设备（rpmsg_tty 等）。
 
 ### 4.2 UniProton mica：remote 视角
 
@@ -131,10 +131,10 @@ PRT_SemPost(msg_sem);                 // :157 ★ISR只post信号量立即返回
 
 **推荐路线**：
 
-1. `linux-6.6.159/include/uapi/linux/virtio_ring.h:96-214`（三表结构+布局注释+vring_init）——**全部机制的物理基础，先读这个**
-2. `linux-6.6.159/drivers/rpmsg/virtio_rpmsg_bus.c:868-1011`（probe）→ `:552-648`（发送）→ `:708-806`（接收）→ `drivers/rpmsg/rpmsg_ns.c:31-96`（NS）
-3. `linux-6.6.159/drivers/virtio/virtio_ring.c:2228-2247,2345-2395`（add_sgs 与 kick 两段式）
-4. `linux-6.6.159/drivers/remoteproc/remoteproc_core.c:1371-1445`（fw_boot）→ `remoteproc_virtio.c:65-75,103-164`（notify 与 vring 写回）→ `drivers/mailbox/imx-mailbox.c:215-236`（打铃最后一米）
+1. `openEuler-6.6/include/uapi/linux/virtio_ring.h:96-214`（三表结构+布局注释+vring_init）——**全部机制的物理基础，先读这个**
+2. `openEuler-6.6/drivers/rpmsg/virtio_rpmsg_bus.c:868-1011`（probe）→ `:552-648`（发送）→ `:708-806`（接收）→ `drivers/rpmsg/rpmsg_ns.c:31-96`（NS）
+3. `openEuler-6.6/drivers/virtio/virtio_ring.c:2246-2264,2363-2413`（add_sgs 与 kick 两段式）
+4. `openEuler-6.6/drivers/remoteproc/remoteproc_core.c:1382-1456`（fw_boot）→ `remoteproc_virtio.c:65-75,103-164`（notify 与 vring 写回）→ `drivers/mailbox/imx-mailbox.c:215-236`（打铃最后一米）
 5. `UniProton/src/component/mica/resource_table.c:21-50` + `resource_table.h:89-104`（remote 交给 master 的"资源清单"）
 6. `UniProton/src/component/mica/rpmsg_backend_rsc_table.c:257-336`（建链）→ `:208-247`（wait_ready）→ `:76-95`（打铃）→ `:134-158`（**收铃只 SemPost——与 Linux 对照的核心**）
 7. `UniProton/src/component/mica/rpmsg_service.c:290-351`（四任务）→ `:110-178`（tty 零拷贝）→ `:271-288`（umt 地址传递）
@@ -150,4 +150,4 @@ PRT_SemPost(msg_sem);                 // :157 ★ISR只post信号量立即返回
 
 ---
 
-*本篇行号基于 linux-6.6.159 与 UniProton 当前 checkout 实测。openamp 库本体在 thirdpart/openamp（CMakeLists.txt:154 引用，当前 checkout 未检出该目录，其内部行号未确认）。*
+*本篇行号基于 openEuler-6.6 与 UniProton 当前 checkout 实测。openamp 库本体在 thirdpart/openamp（CMakeLists.txt:154 引用，当前 checkout 未检出该目录，其内部行号未确认）。*
