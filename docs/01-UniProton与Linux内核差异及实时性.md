@@ -61,7 +61,7 @@
 - 实时负载放 UniProton 核，Linux 跑在另外的核，**干扰被物理隔离**——比 Linux 内部的软隔离（isolcpus / NOHZ_FULL / cgroup）彻底得多。
 - 本仓库源码中可见证据：`src/component/mica/` 目录即 MICA 混合部署的 UniProton 侧支撑。
 
-**量化验证手段**（后续阶段 2 实验）：Linux 用 `cyclictest`；UniProton 用自带 rhealstone 基准（`demos/riscv64virt/build/build_app.sh task-switch`，五项：切换/抢占/消息时延/死锁打破/信号量抖动）。
+**量化验证手段**（后续阶段 2 实验）：Linux 用 `cyclictest`；UniProton 用自带 rhealstone 基准（`testsuites/` 性能测试套，五项：切换/抢占/消息时延/死锁打破/信号量抖动）。
 
 ## 三、核间通信的源码结构（codegraph 实查）
 

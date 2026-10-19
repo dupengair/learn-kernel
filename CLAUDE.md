@@ -37,7 +37,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - UniProton 核间通信：`UniProton/src/component/rpmsg-lite/`（RPMsg-Lite 库）、`UniProton/src/component/mica/`（MICA 混合部署，基于 OpenAMP/virtio + IPI）、`UniProton/doc/design/`（中文设计文档）
 - UniProton demo/板级指南：`UniProton/doc/demo_guide/`；Linux 文档：`openEuler-6.6/Documentation/`
 
-版本陷阱提醒（写文档/回答时注意）：本工作区 Linux 侧为 openEuler OLK-6.6（非社区原生 6.6.y），与社区同版本存在 openEuler 补丁带来的行号偏移和局部代码差异，行号引用一律以本地 openEuler-6.6 实测为准（可用 `git -C openEuler-6.6 log` 追溯补丁来源）。基线 6.6 的通用陷阱仍成立：fair.c 是 EEVDF（非旧 CFS）；mm_init 已改名 mm_core_init、folio API 替换旧页函数；check_preempt_curr 已改名 wakeup_preempt；PREEMPT_RT 完整合入在 6.12；UniProton 本 checkout 无 SWI 模块、demos/riscv64virt 链接脚本实际是 rv64virt.ld（无 examples.ld）。
+**硬件参考标准统一为 ARM64（AArch64）**：三份代码的架构级对比一律以 ARM64 为准——Linux 侧 `openEuler-6.6/arch/arm64/`，UniProton 侧 `src/arch/cpu/armv8/`，参考 demo 用 `demos/hi3093/`（GICv3；另有 raspi4 等 ARM64 demo）。openEuler 对 arm64（主力架构）的补丁远多于 riscv（entry.S/GIC v3 驱动/arch arm64 smp.c 均有大差异），跨架构平移行号不可靠。
+
+版本陷阱提醒（写文档/回答时注意）：本工作区 Linux 侧为 openEuler OLK-6.6（非社区原生 6.6.y），与社区同版本存在 openEuler 补丁带来的行号偏移和局部代码差异，行号引用一律以本地 openEuler-6.6 实测为准（可用 `git -C openEuler-6.6 log` 追溯补丁来源）。基线 6.6 的通用陷阱仍成立：fair.c 是 EEVDF（非旧 CFS）；mm_init 已改名 mm_core_init、folio API 替换旧页函数；check_preempt_curr 已改名 wakeup_preempt；PREEMPT_RT 完整合入在 6.12；UniProton 本 checkout 无 SWI 模块、无 INT_NEST_DEPTH（armv8 无 20 层嵌套上限，该机制为 riscv64 独有）、hi3093 未启用 OS_OPTION_RR_SCHED 与 SMP、rpmsg-lite demo 仅在 riscv64virt 提供（ARM64 核间通信以 hi3093 openamp/MICA 为准）。
 
 ## UniProton 构建命令
 
@@ -51,8 +53,7 @@ python3 build.py m4
 python3 build.py clean
 
 # 一键编译 demo（含内核库 + 应用，产物在 demos/<plat>/build/out/）
-cd demos/riscv64virt/build && sh build_app.sh          # 默认 hello_world
-sh build_app.sh shell                                   # 或指定其他 app（见脚本内参数列表）
+cd demos/hi3093/build && sh build_app.sh                # ARM64 参考平台（openamp 应用，单板运行）
 ```
 
 demo 通用结构：`apps/`（业务代码）、`bsp/`（板级驱动）、`build/`（构建脚本 + 链接脚本 `examples.ld`）、`config/`（`prt_config.c/h` 功能裁剪）。
@@ -62,7 +63,7 @@ demo 通用结构：`apps/`（业务代码）、`bsp/`（板级驱动）、`buil
 由五大子系统组成（详见 `doc/design/architecture_design.md`）：
 
 - **Mem**（`src/mem/`）— 内存分区/块管理，FSC 算法
-- **Arch**（`src/arch/`）— CPU 架构相关：硬中断、异常接管（arm、arm64、riscv64、x86_64）
+- **Arch**（`src/arch/`）— CPU 架构相关：硬中断、异常接管（armv7-m、armv7-r、armv8、riscv64、x86_64；ARM64 对应 **armv8** 目录）
 - **Kernel**（`src/core/kernel/`）— 任务、软中断、TICK、软件定时器
 - **IPC**（`src/core/ipc/`）— 事件、队列、信号量
 - **OM**（`src/om/`）— cpup、hook、错误处理等调测功能

@@ -40,4 +40,4 @@ learn-kernel/
 
 - 开发环境：WSL2（Ubuntu）
 - 代码分析：CodeGraph 符号级代码索引（`codegraph init` 为代码库建立索引后，两个代码库均可进行符号级检索）
-- UniProton 构建与运行参考其自带文档：`UniProton/doc/demo_guide/`（支持 riscv64 QEMU、树莓派 4B、x86_64 等环境）
+- UniProton 构建与运行参考其自带文档：`UniProton/doc/demo_guide/`（支持 hi3093、树莓派 4B、riscv64 QEMU、x86_64 等环境）；硬件参考标准统一为 ARM64，参考 demo 为 `demos/hi3093`

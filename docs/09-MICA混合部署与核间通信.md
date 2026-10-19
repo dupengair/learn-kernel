@@ -112,7 +112,7 @@ PRT_SemPost(msg_sem);                 // :157 ★ISR只post信号量立即返回
 
 ### 4.3 rpmsg-lite 独立栈（demo 线）
 
-`rpmsg_lite_send`（src/component/rpmsg-lite/rpmsg_lite.c:654）→ `rpmsg_lite_format_message`（:580-652）：`vq_tx_alloc` 从 used 环回收 buffer → 填头 → `env_memcpy` 单次拷贝（:642）→ `vq_tx` 入 avail + `virtqueue_kick`（:646-648）。kick 链（virtqueue.c:475-489）：`env_mb()` 内存屏障 → 查 NO_NOTIFY 位 → `platform_notify(vector_id)` → demo 平台 `send_ipi`（rpmsg_platform_riscv.c:81-86，RISC-V IPI）。接收：IPI ISR → `env_isr` → `virtqueue_notification(vq)` → `rpmsg_lite_rx_callback`（:113-170）按 dst 查 ept 链表调 `rx_cb`（RL_HOLD 返回值支持零拷贝持有）。demo 形态：demos/riscv64virt/apps/rpmsglite_env_test 在 QEMU 双核上核 0 master / 核 1 remote 互发计数校验（rpmsg_common.c:27-39）。
+`rpmsg_lite_send`（src/component/rpmsg-lite/rpmsg_lite.c:654）→ `rpmsg_lite_format_message`（:580-652）：`vq_tx_alloc` 从 used 环回收 buffer → 填头 → `env_memcpy` 单次拷贝（:642）→ `vq_tx` 入 avail + `virtqueue_kick`（:646-648）。kick 链（virtqueue.c:475-489）：`env_mb()` 内存屏障 → 查 NO_NOTIFY 位 → `platform_notify(vector_id)` → 平台通知由 demo 提供（本 checkout 唯一参考实现在 riscv64virt demo：`rpmsg_platform_riscv.c:81-86` 的 `send_ipi`；ARM64 场景的核间通知走 MICA/openamp 路线的 IPI/mailbox，见上节）。接收：通知 ISR → `env_isr` → `virtqueue_notification(vq)` → `rpmsg_lite_rx_callback`（:113-170）按 dst 查 ept 链表调 `rx_cb`（RL_HOLD 返回值支持零拷贝持有）。demo 形态：rpmsg-lite 自回环 demo 本 checkout 仅在 riscv64virt 提供（QEMU 双核上核 0 master / 核 1 remote 互发计数校验，rpmsg_common.c:27-39）；ARM64 统一参考下以 demos/hi3093 的 openamp/MICA 应用为准。
 
 ## 5. 实现差异总结表
 
@@ -138,9 +138,9 @@ PRT_SemPost(msg_sem);                 // :157 ★ISR只post信号量立即返回
 5. `UniProton/src/component/mica/resource_table.c:21-50` + `resource_table.h:89-104`（remote 交给 master 的"资源清单"）
 6. `UniProton/src/component/mica/rpmsg_backend_rsc_table.c:257-336`（建链）→ `:208-247`（wait_ready）→ `:76-95`（打铃）→ `:134-158`（**收铃只 SemPost——与 Linux 对照的核心**）
 7. `UniProton/src/component/mica/rpmsg_service.c:290-351`（四任务）→ `:110-178`（tty 零拷贝）→ `:271-288`（umt 地址传递）
-8. `UniProton/src/component/rpmsg-lite/rpmsg_lite.c:580-652` + `virtqueue.c:475-489` + `rpmsg_lite.c:113-170` + `demos/riscv64virt/apps/rpmsglite_env_test/rpmsg_common.c:18-50`
+8. `UniProton/src/component/rpmsg-lite/rpmsg_lite.c:580-652` + `virtqueue.c:475-489` + `rpmsg_lite.c:113-170`（组件核心架构中立）；平台适配参考 `demos/riscv64virt/apps/rpmsglite_env_test/`（rpmsg_platform_riscv.c + rpmsg_common.c:18-50，本 checkout 唯一 rpmsg-lite demo）
 
-**实验建议**：跑 `demos/riscv64virt/build/build_app.sh rpmsglite_env_test`（QEMU 双核自回环），用 QEMU `-smp 2` 观察 master/remote 两个核的输出交错；有条件上 milkv-duo 真板体验 Linux master + UniProton remote 全链。
+**实验建议**：ARM64 统一参考下跑 `demos/hi3093/build/build_app.sh`（openamp/MICA 应用，单板运行，配合 Linux 侧 remoteproc 链路体验 master/remote 全链）；rpmsg-lite 的 QEMU 双核自回环（`demos/riscv64virt/build/build_app.sh rpmsglite_env_test`）仍可作为快速观察 master/remote 输出交错的补充实验。
 
 **思考题**：
 
