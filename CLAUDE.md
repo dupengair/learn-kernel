@@ -31,7 +31,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 重点阅读入口：
 
-- **答疑文档全集（docs/00~10）**：00 学习路径与方法指导 / 01 UniProton 与 Linux 差异及实时性总览 / **代码级教案系列（docs/02~09，八大技术点行号级对比）**——02 内核形态与启动 / 03 调度决策 / 04 抢占与临界区 / 05 中断路径 / 06 内存确定性 / 07 API路径与上下文切换 / 08 优先级继承 / 09 MICA核间通信（部分篇目含"答疑区"追问小节）/ 10 社区6.6 与 openEuler6.6 调度与核间通信差异（双侧 diff 实测方法与归因教训）。回答相关问题时优先参考并保持一致口径
+- **答疑文档全集（docs/00~10）**：00 学习路径与方法指导 / 01 UniProton 与 Linux 差异及实时性总览 / **代码级教案系列（docs/02~09，八大技术点行号级对比）**——02 内核形态与启动 / 03 调度决策 / 04 抢占与临界区 / 05 中断路径 / 06 内存确定性 / 07 API路径与上下文切换 / 08 优先级继承 / 09 MICA核间通信（部分篇目含"答疑区"追问小节）/ 10 社区6.6 与 openEuler6.6 调度与核间通信差异（双侧 diff 实测方法与归因教训）/ 11 EEVDF与CFS差异及调度参数调优（EEVDF公式与fair.c行号级链路、/proc与cgroup参数全景、混布场景调优）。回答相关问题时优先参考并保持一致口径
 - Linux 调度：`openEuler-6.6/kernel/sched/`（`fair.c` EEVDF、`rt.c`、`core.c` 调度类框架）
 - Linux 核间通信：`openEuler-6.6/arch/*/kernel/smp.c`（IPI）、`drivers/rpmsg/`、`drivers/virtio/`
 - UniProton 调度：`UniProton/src/core/kernel/`（任务、TICK；注意本 checkout 无软中断模块）及 `doc/design/task.md`
